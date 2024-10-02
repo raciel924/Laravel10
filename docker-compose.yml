@@ -1,0 +1,85 @@
+services:
+  # MySQL service
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: laravel
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_USER: laraveluser
+      MYSQL_PASSWORD: laravelpassword
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - laravel_network
+
+  # phpMyAdmin service
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - '8081:80'
+    depends_on:
+      - mysql
+    networks:
+      - laravel_network
+
+  # Laravel service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /var/www/html
+    container_name: laravel-app
+    volumes:
+      - ./:/var/www/html
+    environment:
+      SERVICE_NAME: laravel-app
+      SERVICE_TAGS: dev
+    networks:
+      - laravel_network
+    depends_on:
+      - mysql
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command: bash -c "[ ! -f artisan ] && composer create-project --prefer-dist laravel/laravel . || true && php-fpm"
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    volumes:
+      - ./:/var/www/html
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf  # Nginx config file
+    depends_on:
+      - app
+    networks:
+      - laravel_network
+  # Node.js for Vue.js integration
+  node:
+    image: node:16
+    container_name: node-app
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - laravel_network
+    stdin_open: true
+    tty: true
+    command: bash -c "npm install && npm run dev"
+
+volumes:
+  mysql_data:
+
+networks:
+  laravel_network:
+    driver: bridge
