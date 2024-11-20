@@ -66,16 +66,16 @@ services:
       - laravel_network
   # Node.js for Vue.js integration
   node:
-    image: node:16
     container_name: node-app
-    working_dir: /var/www/html
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    ports:
+      - "5173:5173"
     volumes:
       - ./:/var/www/html
     networks:
       - laravel_network
-    stdin_open: true
-    tty: true
-    command: bash -c "npm install && npm run dev"
 
 volumes:
   mysql_data:
